@@ -1,14 +1,19 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	ErrFailedComparingHashAndPassword = errors.New("failed to compare hash and pass")
+)
+
 func compareHashAndPassword(hash, inputPassword string) error {
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(inputPassword)); err != nil {
-		return fmt.Errorf("failed to compare hash and input password, err: %w", err)
+		return fmt.Errorf("%w: %w", ErrFailedComparingHashAndPassword, err)
 	}
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(inputPassword))
 }

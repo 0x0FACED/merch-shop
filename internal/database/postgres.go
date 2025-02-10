@@ -7,7 +7,6 @@ import (
 
 	"github.com/0x0FACED/merch-shop/config"
 	"github.com/0x0FACED/merch-shop/internal/model"
-	"github.com/0x0FACED/merch-shop/internal/service"
 	"github.com/0x0FACED/merch-shop/pkg/logger"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,7 +16,7 @@ import (
 // Основной инстанс для базы. Неэкспортируемый.
 // Будем использовать интерфейсы в каждом месте свои, чтобы ограничить поведение базы
 // для конкретных мест
-type postgres struct {
+type Postgres struct {
 	pgx *pgxpool.Pool
 
 	log *logger.ZapLogger
@@ -25,16 +24,14 @@ type postgres struct {
 	config *pgxpool.Config
 }
 
-var _ service.UserRepository = (*postgres)(nil)
-
-func New(cfg config.DatabaseConfig, logger *logger.ZapLogger) (*postgres, error) {
+func New(cfg config.DatabaseConfig, logger *logger.ZapLogger) (*Postgres, error) {
 	pgxpoolConfig, err := pgxpoolConfig(cfg)
 	if err != nil {
 		logger.Error("[New()] cant parse config", zap.Error(err))
 		return nil, err
 	}
 
-	return &postgres{
+	return &Postgres{
 		config: pgxpoolConfig,
 		log:    logger,
 	}, nil
@@ -61,7 +58,7 @@ func pgxpoolConfig(cfg config.DatabaseConfig) (*pgxpool.Config, error) {
 	return config, nil
 }
 
-func (p *postgres) MustConnect(ctx context.Context) {
+func (p *Postgres) MustConnect(ctx context.Context) {
 	// NewWithConfig creates a new Pool. config must have been created by [ParseConfig].
 	// Поэтому нам его доставать через parseConfig (ф-я pgxpoolConfig)
 	pool, err := pgxpool.NewWithConfig(ctx, p.config)
@@ -82,30 +79,41 @@ func (p *postgres) MustConnect(ctx context.Context) {
 
 // ------------------------------------------ SQL ------------------------------------------
 
-func (p *postgres) GetUserByUsername(ctx context.Context, username string) (*model.User, error) {
+// TODO:
+// Надо еще создавать юзера при первой авторизации
+// Надо делать либо так:
+// 1. Отдаем ErrNotFound в сервис, сервис ее в API. Там проверяем.
+// Если ErrNotFound вернулась, то вызываем метод для создания юзера
+// 2. Сразу в базе создаем юзера
+func (p *Postgres) AuthUserOrCreate(ctx context.Context, params model.AuthUserParams) (*model.User, error) {
 	query := `
 		SELECT id, username, password_hash
 		FROM shop.users
 		WHERE username = $1
 	`
 
-	row := p.pgx.QueryRow(ctx, query, username)
-
+	row, err := p.pgx.Query(ctx, query, params.Username)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("%w query %q: %w", ErrQueryFailed, query, err)
+	}
 	user := &model.User{}
 
-	err := row.Scan(
+	err = row.Scan(
 		&user.ID,
 		&user.Username,
 		&user.Password,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", ErrScanFailed, err)
 	}
 
 	return user, nil
 }
 
-func (p *postgres) SendCoin(ctx context.Context, params model.SendCoinParams) error {
+func (p *Postgres) SendCoin(ctx context.Context, params model.SendCoinParams) error {
 	p.log.Debug("SendCoin", zap.Any("params", params))
 
 	tx, err := p.pgx.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
@@ -166,7 +174,7 @@ func (p *postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 	`
 	_, err = tx.Exec(ctx, insertTransactionQuery, params.FromUser, toUserID, params.Amount)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrFailedToSaveTx, err)
+		return fmt.Errorf("%w: %w", ErrFailedToSaveTransaction, err)
 	}
 
 	if err = tx.Commit(ctx); err != nil {

@@ -37,6 +37,10 @@ func (h *Handler) SetupRoutes(e *echo.Echo) {
 	group.POST("/sendCoin", h.SendCoin) // отправка монет кому-либо
 }
 
+// Для авторизации доступов должен использоваться JWT.
+// Пользовательский токен доступа к API выдается после авторизации/регистрации пользователя.
+// При первой авторизации пользователь должен создаваться автоматически.
+// TODO: Надо создавать юзера, если это его первый вход.
 func (h *Handler) AuthUser(c echo.Context) error {
 	var req AuthRequest
 
@@ -62,7 +66,7 @@ func (h *Handler) AuthUser(c echo.Context) error {
 
 	user, err := h.userService.AuthUser(ctx, params)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "invalid credentials")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -73,7 +77,7 @@ func (h *Handler) AuthUser(c echo.Context) error {
 	// TODO: ключ в пер окружения
 	tokenString, err := token.SignedString([]byte("super-secret-key"))
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to create token")
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "failed to create token")
 	}
 
 	return c.JSON(http.StatusOK, map[string]string{"token": tokenString})
@@ -86,7 +90,7 @@ func (h *Handler) GetUserInfo(c echo.Context) error {
 
 	userInfo, err := h.userService.GetUserInfo(ctx, "test")
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user info")
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "failed to get user info")
 	}
 
 	/*resp := InfoResponse{
@@ -130,7 +134,7 @@ func (h *Handler) SendCoin(c echo.Context) error {
 
 	if err := h.userService.SendCoin(ctx, params); err != nil {
 		resp := ErrorResponse{Errors: err.Error()}
-		return echo.NewHTTPError(http.StatusBadRequest, resp)
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), resp)
 	}
 
 	return c.NoContent(http.StatusOK)
