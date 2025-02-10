@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
@@ -107,9 +106,11 @@ func (p *postgres) GetUserByUsername(ctx context.Context, username string) (*mod
 }
 
 func (p *postgres) SendCoin(ctx context.Context, params model.SendCoinParams) error {
+	p.log.Debug("SendCoin", zap.Any("params", params))
+
 	tx, err := p.pgx.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("%w: %w", ErrFailedToBeginTx, err)
 	}
 
 	defer func() {
@@ -124,23 +125,23 @@ func (p *postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 	var toUserID uint
 	err = tx.QueryRow(ctx, getUserIDQuery, params.ToUser).Scan(&toUserID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("recipient user not found")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("recipient %w", ErrNotFound)
 		}
-		return fmt.Errorf("failed to find recipient: %w", err)
+		return fmt.Errorf("%w query %q: %w", ErrFailedToFindRecipient, getUserIDQuery, err)
 	}
 
 	lockBalanceQuery := `
-		SELECT balance FROM shop.wallets WHERE user_id = $1 FOR UPDATE
+		SELECT balance FROM shop.wallets WHERE user_id = $1
 	`
 	var fromBalance int
 	err = tx.QueryRow(ctx, lockBalanceQuery, params.FromUser).Scan(&fromBalance)
 	if err != nil {
-		return fmt.Errorf("failed to fetch sender balance: %w", err)
+		return fmt.Errorf("%w query %q: %w", ErrFailedToFetchBalance, lockBalanceQuery, err)
 	}
 
 	if fromBalance < params.Amount {
-		return fmt.Errorf("insufficient funds")
+		return fmt.Errorf("%w", ErrInsufficientFunds)
 	}
 
 	decreaseBalanceQuery := `
@@ -148,7 +149,7 @@ func (p *postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 	`
 	_, err = tx.Exec(ctx, decreaseBalanceQuery, params.Amount, params.FromUser)
 	if err != nil {
-		return fmt.Errorf("failed to debit sender: %w", err)
+		return fmt.Errorf("%w: %w", ErrFailedToDebitSender, err)
 	}
 
 	increaseBalanceQuery := `
@@ -156,7 +157,7 @@ func (p *postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 	`
 	_, err = tx.Exec(ctx, increaseBalanceQuery, params.Amount, toUserID)
 	if err != nil {
-		return fmt.Errorf("failed to credit recipient: %w", err)
+		return fmt.Errorf("%w: %w", ErrFailedToCreditRecipient, err)
 	}
 
 	insertTransactionQuery := `
@@ -165,11 +166,11 @@ func (p *postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 	`
 	_, err = tx.Exec(ctx, insertTransactionQuery, params.FromUser, toUserID, params.Amount)
 	if err != nil {
-		return fmt.Errorf("failed to log transaction: %w", err)
+		return fmt.Errorf("%w: %w", ErrFailedToSaveTx, err)
 	}
 
 	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+		return fmt.Errorf("%w: %w", ErrFailedToCommitTx, err)
 	}
 
 	return nil
