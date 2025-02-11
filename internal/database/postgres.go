@@ -293,3 +293,58 @@ func (p *Postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 
 	return nil
 }
+
+func (p *Postgres) GetUserBalance(ctx context.Context, userID uint) (uint, error) {
+	var balance uint
+	err := p.pgx.QueryRow(ctx, `SELECT balance FROM shop.wallets WHERE user_id = $1`, userID).Scan(&balance)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, ErrNotFound
+		}
+		return 0, fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+
+	return balance, nil
+}
+
+func (p *Postgres) BuyItem(ctx context.Context, params model.BuyItemParams) error {
+	tx, err := p.pgx.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedToBeginTx, err)
+	}
+	defer tx.Rollback(ctx)
+
+	var itemID, price uint
+	err = tx.QueryRow(ctx, `SELECT id, price FROM shop.items WHERE name = $1`, params.Item).Scan(&itemID, &price)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+
+	if params.Balance < price {
+		return ErrInsufficientFunds
+	}
+
+	_, err = tx.Exec(ctx, `UPDATE shop.wallets SET balance = balance - $1 WHERE user_id = $2`, price, params.UserID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO shop.inventory (user_id, item_id, quantity)
+		VALUES ($1, $2, 1)
+		ON CONFLICT (user_id, item_id) DO UPDATE
+		SET quantity = shop.inventory.quantity + 1
+	`, params.UserID, itemID)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("%w: %w", ErrFailedToCommitTx, err)
+	}
+
+	return nil
+}

@@ -14,7 +14,9 @@ type userRepository interface {
 	AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error)
 	CreateUser(ctx context.Context, params model.CreateUserParams) (*model.User, error)
 	GetUserInfo(ctx context.Context, params model.GetUserInfoParams) (*model.UserInfo, error)
+	GetUserBalance(ctx context.Context, userID uint) (uint, error)
 	SendCoin(ctx context.Context, params model.SendCoinParams) error
+	BuyItem(ctx context.Context, params model.BuyItemParams) error
 }
 
 var _ userRepository = (*database.Postgres)(nil)
@@ -93,6 +95,30 @@ func (s *UserService) GetUserInfo(ctx context.Context, params model.GetUserInfoP
 func (s *UserService) SendCoin(ctx context.Context, params model.SendCoinParams) error {
 	if err := s.repo.SendCoin(ctx, params); err != nil {
 		s.logger.Error("SendCoin() -> SendCoin() request | error",
+			zap.Any("params", params),
+			zap.Error(err),
+		)
+		return err
+
+	}
+
+	return nil
+}
+
+func (s *UserService) BuyItem(ctx context.Context, params model.BuyItemParams) error {
+	balance, err := s.repo.GetUserBalance(ctx, params.UserID)
+	if err != nil {
+		s.logger.Error("BuyItem() -> GetUserBalance() request | error",
+			zap.Any("params", params),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	params.Balance = balance
+
+	if err := s.repo.BuyItem(ctx, params); err != nil {
+		s.logger.Error("BuyItem() -> BuyItem() request | error",
 			zap.Any("params", params),
 			zap.Error(err),
 		)

@@ -19,3 +19,9 @@ type SendCoinParams struct {
 type GetUserInfoParams struct {
 	ID uint
 }
+
+type BuyItemParams struct {
+	UserID  uint
+	Item    string
+	Balance uint
+}

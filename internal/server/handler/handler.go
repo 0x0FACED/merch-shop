@@ -111,7 +111,21 @@ func (h *Handler) GetUserInfo(c echo.Context) error {
 }
 
 func (h *Handler) BuyItem(c echo.Context) error {
-	return nil
+	userID := c.Get("user_id").(uint)
+	item := c.Param("item")
+
+	ctx := c.Request().Context()
+
+	params := model.BuyItemParams{
+		UserID: userID,
+		Item:   item,
+	}
+	if err := h.userService.BuyItem(ctx, params); err != nil {
+		resp := ErrorResponse{Errors: err.Error()}
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), resp)
+	}
+
+	return c.NoContent(http.StatusOK)
 }
 
 func (h *Handler) SendCoin(c echo.Context) error {
