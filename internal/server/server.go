@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/0x0FACED/merch-shop/config"
 	"github.com/0x0FACED/merch-shop/internal/database"
@@ -11,6 +13,7 @@ import (
 	"github.com/0x0FACED/merch-shop/internal/server/validator"
 	"github.com/0x0FACED/merch-shop/internal/service"
 	"github.com/0x0FACED/merch-shop/pkg/logger"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
@@ -22,8 +25,7 @@ type Server struct {
 	db     *database.Postgres
 }
 
-func NewServer() (*Server, error) {
-	cfg := config.MustLoad()
+func NewServer(cfg *config.ServiceConfig) (*Server, error) {
 	log := logger.New(cfg.Logger)
 
 	log.Info("Config is loaded")
@@ -65,7 +67,11 @@ func (s *Server) Start(ctx context.Context) error {
 	errChan := make(chan error, 1)
 	go func() {
 		addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
-		errChan <- s.echo.Start(addr)
+		err := s.echo.Start(addr)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			errChan <- err
+		}
+		close(errChan)
 	}()
 
 	select {
@@ -73,14 +79,28 @@ func (s *Server) Start(ctx context.Context) error {
 		s.logger.Info("Interrupt received, shutting down...")
 		return s.Shutdown()
 	case err := <-errChan:
-		return fmt.Errorf("server stopped with err: %w", err)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			return fmt.Errorf("server stopped with err: %w", err)
+		}
+		return nil
 	}
+}
+
+func (s Server) Echo() *echo.Echo {
+	return s.echo
+}
+
+func (s Server) Database() *pgxpool.Pool {
+	return s.db.Pool()
 }
 
 func (s *Server) Shutdown() error {
 	s.logger.Info("Shutting down the server...")
 
-	if err := s.echo.Shutdown(context.Background()); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := s.echo.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
 
