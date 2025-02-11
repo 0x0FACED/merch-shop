@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS shop.inventory;
+DROP TABLE IF EXISTS shop.transactions;
+DROP TABLE IF EXISTS shop.wallets;
+DROP TABLE IF EXISTS shop.items;
+DROP TABLE IF EXISTS shop.users;
+
+DROP SCHEMA IF EXISTS shop CASCADE;
