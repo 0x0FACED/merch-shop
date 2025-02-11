@@ -15,7 +15,7 @@ func compareHashAndPassword(hash, inputPassword string) error {
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(inputPassword)); err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedComparingHashAndPassword, err)
 	}
-	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(inputPassword))
+	return nil
 }
 
 func calcHash(password string) (string, error) {
