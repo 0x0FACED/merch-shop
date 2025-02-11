@@ -77,6 +77,13 @@ func (p *Postgres) MustConnect(ctx context.Context) {
 	p.pgx = pool
 }
 
+func (p *Postgres) Close() error {
+	p.log.Info("Closing database connection...")
+	p.pgx.Close()
+	p.log.Info("Database connection is closed")
+	return nil
+}
+
 // ------------------------------------------ SQL ------------------------------------------
 
 // TODO:
