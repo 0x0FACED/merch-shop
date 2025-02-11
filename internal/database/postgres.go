@@ -122,6 +122,17 @@ func (p *Postgres) CreateUser(ctx context.Context, params model.CreateUserParams
 		return nil, fmt.Errorf("%w query %q: %w", ErrQueryFailed, query, err)
 	}
 
+	createWalletQuery := `
+		INSERT INTO shop.wallets (user_id)
+		VALUES ($1)
+	`
+
+	// TODO: мб добавить rowsAffected првоерку у тега
+	_, err = p.pgx.Exec(ctx, createWalletQuery, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("%w query %q: %w", ErrQueryFailed, query, err)
+	}
+
 	return user, nil
 }
 
