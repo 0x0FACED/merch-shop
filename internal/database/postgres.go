@@ -85,29 +85,41 @@ func (p *Postgres) MustConnect(ctx context.Context) {
 // 1. Отдаем ErrNotFound в сервис, сервис ее в API. Там проверяем.
 // Если ErrNotFound вернулась, то вызываем метод для создания юзера
 // 2. Сразу в базе создаем юзера
-func (p *Postgres) AuthUserOrCreate(ctx context.Context, params model.AuthUserParams) (*model.User, error) {
+func (p *Postgres) AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error) {
 	query := `
-		SELECT id, username, password_hash
+		SELECT id, password_hash
 		FROM shop.users
 		WHERE username = $1
 	`
 
-	row, err := p.pgx.Query(ctx, query, params.Username)
+	user := &model.User{}
+
+	err := p.pgx.QueryRow(ctx, query, params.Username).Scan(&user.ID, &user.Password)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("%w query %q: %w", ErrQueryFailed, query, err)
 	}
+
+	return user, nil
+}
+
+func (p *Postgres) CreateUser(ctx context.Context, params model.CreateUserParams) (*model.User, error) {
+	query := `
+		INSERT INTO shop.users (username, password_hash)
+		VALUES ($1, $2)
+		RETURNING id, username
+	`
+
 	user := &model.User{}
 
-	err = row.Scan(
+	err := p.pgx.QueryRow(ctx, query, params.Username, params.Password).Scan(
 		&user.ID,
 		&user.Username,
-		&user.Password,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrScanFailed, err)
+		return nil, fmt.Errorf("%w query %q: %w", ErrQueryFailed, query, err)
 	}
 
 	return user, nil
