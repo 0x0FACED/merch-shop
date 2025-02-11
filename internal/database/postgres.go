@@ -37,6 +37,10 @@ func New(cfg config.DatabaseConfig, logger *logger.ZapLogger) (*Postgres, error)
 	}, nil
 }
 
+func (p Postgres) Pool() *pgxpool.Pool {
+	return p.pgx
+}
+
 // pgxpoolConfig - функция, которая создает pgxpool.Config из конфига Database
 // является неэкспортируемой, потому что используется только когда
 // мы сздаем инстанс pgxpool
@@ -239,8 +243,9 @@ func (p *Postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 
 	defer func() {
 		if err != nil {
-			// TODO: мб error handle добавить для ролбэка
 			tx.Rollback(ctx)
+		} else {
+			tx.Commit(ctx)
 		}
 	}()
 
@@ -266,7 +271,7 @@ func (p *Postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 	}
 
 	if fromBalance < params.Amount {
-		return fmt.Errorf("%w", ErrInsufficientFunds)
+		return ErrInsufficientFunds
 	}
 
 	decreaseBalanceQuery := `
