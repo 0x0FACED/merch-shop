@@ -63,3 +63,26 @@ func MustLoad() *ServiceConfig {
 
 	return cfg
 }
+
+func MustLoadTestConfig() *ServiceConfig {
+
+	if err := godotenv.Load(".env.test"); err != nil {
+		panic(err)
+	}
+
+	cfg := &ServiceConfig{}
+
+	if err := env.Parse(&cfg.Server); err != nil {
+		panic(err)
+	}
+
+	if err := env.Parse(&cfg.Database); err != nil {
+		panic(err)
+	}
+
+	if err := env.Parse(&cfg.Logger); err != nil {
+		panic(err)
+	}
+
+	return cfg
+}
