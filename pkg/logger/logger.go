@@ -24,7 +24,7 @@ func New(cfg config.LoggerConfig) *ZapLogger {
 	}
 
 	currentDate := time.Now().Format(time.DateOnly)
-	logFileName := fmt.Sprintf("%s-%s.log", "ams", currentDate)
+	logFileName := fmt.Sprintf("%s-%s.log", "merch-shop", currentDate)
 	logFilePath := filepath.Join(logDir, logFileName)
 
 	file, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
