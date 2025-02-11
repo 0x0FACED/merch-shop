@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/0x0FACED/merch-shop/internal/database"
 	"github.com/0x0FACED/merch-shop/internal/model"
@@ -10,7 +11,8 @@ import (
 )
 
 type userRepository interface {
-	AuthUserOrCreate(ctx context.Context, params model.AuthUserParams) (*model.User, error)
+	AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error)
+	CreateUser(ctx context.Context, params model.CreateUserParams) (*model.User, error)
 	SendCoin(ctx context.Context, params model.SendCoinParams) error
 }
 
@@ -30,15 +32,39 @@ func NewUserService(db userRepository, l *logger.ZapLogger) *UserService {
 }
 
 func (s *UserService) AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error) {
-	user, err := s.repo.AuthUserOrCreate(ctx, params)
+	user, err := s.repo.AuthUser(ctx, params)
 	if err != nil {
-		s.logger.Error("AuthUser() -> GetUserByUsername() request | error",
+		s.logger.Error("AuthUser() -> AuthUser() request | error",
 			zap.Any("params", params),
 			zap.Error(err),
 		)
+		// Не нашли юзера, значит создаем его
+		if errors.Is(err, database.ErrNotFound) {
+			// create user
+			hash, err := calcHash(params.Password)
+			if err != nil {
+				return nil, err
+			}
+
+			createParams := model.CreateUserParams{
+				Username: params.Username,
+				Password: hash,
+			}
+
+			user, err = s.repo.CreateUser(ctx, createParams)
+			if err != nil {
+				// Failed to create user, return
+				return nil, err
+			}
+			// Successfully created user
+			return user, nil
+		}
+		// ошибка базы
 		return nil, err
+
 	}
 
+	// юзер существует, проверяем пароль и хэш базы
 	if err := compareHashAndPassword(user.Password, params.Password); err != nil {
 		s.logger.Error("AuthUser() -> compareHashAndPassword() request | error",
 			zap.Any("params", params),
