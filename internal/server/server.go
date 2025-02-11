@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/0x0FACED/merch-shop/config"
@@ -15,94 +16,78 @@ import (
 )
 
 type Server struct {
-	echoInstance *echo.Echo
-	handler      *handler.Handler
-
-	logger *logger.ZapLogger
-
+	echo   *echo.Echo
 	config config.ServerConfig
+	logger *logger.ZapLogger
+	db     *database.Postgres
 }
 
-func newServer(e *echo.Echo, h *handler.Handler, l *logger.ZapLogger, cfg config.ServerConfig) *Server {
-	return &Server{
-		echoInstance: e,
-		handler:      h,
-		logger:       l,
-		config:       cfg,
-	}
-}
-
-func StartHTTP() error {
-	server, err := prepareServer()
-	if err != nil {
-		return err
-	}
-
-	addr := addr(server.config.Host, server.config.Port)
-	return server.echoInstance.Start(addr)
-}
-
-func addr(host, port string) string {
-	return host + ":" + port
-}
-
-func prepareServer() (*Server, error) {
-	ctx := context.Background()
-
+func NewServer() (*Server, error) {
 	cfg := config.MustLoad()
+	log := logger.New(cfg.Logger)
 
-	logger := logger.New(cfg.Logger)
+	log.Info("Config is loaded")
 
-	logger.Info("Config successfully loaded")
-
-	logger.Info("Logger created")
-
-	db, err := database.New(cfg.Database, logger)
+	db, err := database.New(cfg.Database, log)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating database instance: %w", err)
 	}
+	db.MustConnect(context.Background())
 
-	// Паникует, если не удалось установить коннект.
-	// Все же коннект к базе супер важен, поэтому надо падать с паникой
-	db.MustConnect(ctx)
+	userService := service.NewUserService(db, log)
 
-	u := service.NewUserService(db, logger)
+	log.Info("UserService created")
 
-	logger.Info("User Service created")
-
-	e := echoInstanceWithConfig(cfg.Server)
-
-	logger.Info("Echo instance created")
-
-	h := handler.NewHandler(u, logger, &cfg.Server)
-
-	logger.Info("Handler is created")
-
-	server := newServer(e, h, logger, cfg.Server)
-
-	logger.Info("Setting up API Handlers")
-
-	server.setupAPIRoutes()
-
-	return server, nil
-}
-
-func (s *Server) setupAPIRoutes() {
-	s.handler.SetupRoutes(s.echoInstance)
-}
-
-func echoInstanceWithConfig(cfg config.ServerConfig) *echo.Echo {
 	e := echo.New()
-	e.Server = &http.Server{ // пока что такие настройки
-		ReadTimeout:  cfg.ReadTimeout,  // из конфига в секундах
-		WriteTimeout: cfg.WriteTimeout, // из конфига в секундах
-		IdleTimeout:  cfg.IdleTimeout,  // из конфига в секундах
+	e.Server = &http.Server{
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
-
 	e.Validator = validator.NewAPIValidator()
-
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 
-	return e
+	h := handler.NewHandler(userService, log, &cfg.Server)
+	h.SetupRoutes(e)
+
+	return &Server{
+		echo:   e,
+		config: cfg.Server,
+		logger: log,
+		db:     db,
+	}, nil
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	s.logger.Info("Starting server...")
+
+	errChan := make(chan error, 1)
+	go func() {
+		addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
+		errChan <- s.echo.Start(addr)
+	}()
+
+	select {
+	case <-ctx.Done():
+		s.logger.Info("Interrupt received, shutting down...")
+		return s.Shutdown()
+	case err := <-errChan:
+		return fmt.Errorf("server stopped with err: %w", err)
+	}
+}
+
+func (s *Server) Shutdown() error {
+	s.logger.Info("Shutting down the server...")
+
+	if err := s.echo.Shutdown(context.Background()); err != nil {
+		return fmt.Errorf("failed to shutdown server: %w", err)
+	}
+
+	if err := s.db.Close(); err != nil {
+		return fmt.Errorf("failed to close db: %w", err)
+	}
+
+	s.logger.Info("Server shutdown successfully")
+	return nil
 }
