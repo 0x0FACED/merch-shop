@@ -15,3 +15,7 @@ type SendCoinParams struct {
 	ToUser   string
 	Amount   int
 }
+
+type GetUserInfoParams struct {
+	ID uint
+}

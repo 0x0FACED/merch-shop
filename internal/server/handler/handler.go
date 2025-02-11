@@ -80,26 +80,34 @@ func (h *Handler) AuthUser(c echo.Context) error {
 		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "failed to create token")
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{"token": tokenString})
+	resp := AuthResponse{
+		Token: tokenString,
+	}
+
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) GetUserInfo(c echo.Context) error {
-	//userID := c.Get("user_id").(uint)
+	userID := c.Get("user_id").(uint)
 
 	ctx := c.Request().Context()
 
-	userInfo, err := h.userService.GetUserInfo(ctx, "test")
+	params := model.GetUserInfoParams{
+		ID: userID,
+	}
+
+	userInfo, err := h.userService.GetUserInfo(ctx, params)
 	if err != nil {
 		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "failed to get user info")
 	}
 
-	/*resp := InfoResponse{
+	resp := InfoResponse{
 		Coins:       userInfo.Coins,
 		Inventory:   userInfo.Inventory,
 		CoinHistory: userInfo.CoinHistory,
-	}*/
+	}
 
-	return c.JSON(http.StatusOK, userInfo)
+	return c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) BuyItem(c echo.Context) error {

@@ -11,3 +11,7 @@ type InfoResponse struct {
 	Inventory   model.Inventory   `json:"inventory"`
 	CoinHistory model.CoinHistory `json:"coinHistory"`
 }
+
+type AuthResponse struct {
+	Token string `json:"token"`
+}

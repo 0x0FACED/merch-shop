@@ -5,3 +5,9 @@ type User struct {
 	Username string `db:"username"`
 	Password string `db:"password_hash"`
 }
+
+type UserInfo struct {
+	Coins       uint `db:"balance"`
+	Inventory   Inventory
+	CoinHistory CoinHistory
+}

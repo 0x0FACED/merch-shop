@@ -13,6 +13,7 @@ import (
 type userRepository interface {
 	AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error)
 	CreateUser(ctx context.Context, params model.CreateUserParams) (*model.User, error)
+	GetUserInfo(ctx context.Context, params model.GetUserInfoParams) (*model.UserInfo, error)
 	SendCoin(ctx context.Context, params model.SendCoinParams) error
 }
 
@@ -80,13 +81,13 @@ func (s *UserService) AuthUser(ctx context.Context, params model.AuthUserParams)
 }
 
 // TODO: REWRITE
-func (s *UserService) GetUserInfo(ctx context.Context, username string) (*model.User, error) {
-	//user, err := s.repo.AuthUserOrCreate(ctx, nil)
-	//if err != nil {
-	//	return nil, err
-	//}
-	return nil, nil
-	//return user, nil
+func (s *UserService) GetUserInfo(ctx context.Context, params model.GetUserInfoParams) (*model.UserInfo, error) {
+	userInfo, err := s.repo.GetUserInfo(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return userInfo, nil
 }
 
 func (s *UserService) SendCoin(ctx context.Context, params model.SendCoinParams) error {

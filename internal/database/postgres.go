@@ -136,6 +136,92 @@ func (p *Postgres) CreateUser(ctx context.Context, params model.CreateUserParams
 	return user, nil
 }
 
+func (p *Postgres) GetUserInfo(ctx context.Context, params model.GetUserInfoParams) (*model.UserInfo, error) {
+	var balance uint
+	err := p.pgx.QueryRow(ctx, `SELECT balance FROM shop.wallets WHERE user_id = $1`, params.ID).Scan(&balance)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+
+	inventoryQuery := `
+		SELECT i.name, inv.quantity
+		FROM shop.inventory inv
+		JOIN shop.items i ON inv.item_id = i.id
+		WHERE inv.user_id = $1
+	`
+	rows, err := p.pgx.Query(ctx, inventoryQuery, params.ID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+	defer rows.Close()
+
+	var inventory model.Inventory
+	var items []model.Item
+	for rows.Next() {
+		var item model.Item
+		if err := rows.Scan(&item.Type, &item.Quantity); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrScanFailed, err)
+		}
+		items = append(items, item)
+	}
+
+	inventory.Items = items
+
+	receivedQuery := `
+		SELECT u.username, t.amount
+		FROM shop.transactions t
+		JOIN shop.users u ON t.from_user_id = u.id
+		WHERE t.to_user_id = $1
+	`
+	rows, err = p.pgx.Query(ctx, receivedQuery, params.ID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+	defer rows.Close()
+
+	var received []model.ReceivedTransaction
+	for rows.Next() {
+		var trans model.ReceivedTransaction
+		if err := rows.Scan(&trans.User, &trans.Amount); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrScanFailed, err)
+		}
+		received = append(received, trans)
+	}
+
+	sentQuery := `
+		SELECT u.username, t.amount
+		FROM shop.transactions t
+		JOIN shop.users u ON t.to_user_id = u.id
+		WHERE t.from_user_id = $1
+	`
+	rows, err = p.pgx.Query(ctx, sentQuery, params.ID)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrQueryFailed, err)
+	}
+	defer rows.Close()
+
+	var sent []model.SentTransaction
+	for rows.Next() {
+		var trans model.SentTransaction
+		if err := rows.Scan(&trans.User, &trans.Amount); err != nil {
+			return nil, fmt.Errorf("%w: %w", ErrScanFailed, err)
+		}
+		sent = append(sent, trans)
+	}
+
+	return &model.UserInfo{
+		Coins:     balance,
+		Inventory: inventory,
+		CoinHistory: model.CoinHistory{
+			Received: received,
+			Sent:     sent,
+		},
+	}, nil
+}
+
 func (p *Postgres) SendCoin(ctx context.Context, params model.SendCoinParams) error {
 	p.log.Debug("SendCoin", zap.Any("params", params))
 
@@ -146,6 +232,7 @@ func (p *Postgres) SendCoin(ctx context.Context, params model.SendCoinParams) er
 
 	defer func() {
 		if err != nil {
+			// TODO: мб error handle добавить для ролбэка
 			tx.Rollback(ctx)
 		}
 	}()
