@@ -50,6 +50,23 @@ func New(cfg config.LoggerConfig) *ZapLogger {
 	}
 }
 
+func NewTestLogger(cfg config.LoggerConfig) *ZapLogger {
+	cEnc := zapcore.NewConsoleEncoder(cmdConfig())
+
+	level := level(cfg.LogLevel)
+
+	core := zapcore.NewTee(
+		zapcore.NewCore(cEnc, zapcore.AddSync(os.Stdout), zapcore.Level(level)),
+	)
+
+	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
+
+	return &ZapLogger{
+		log: logger,
+		cfg: cfg,
+	}
+}
+
 // просто вернет конфиг для запа для writer console
 func cmdConfig() zapcore.EncoderConfig {
 	return zapcore.EncoderConfig{
