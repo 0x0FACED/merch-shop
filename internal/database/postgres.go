@@ -234,8 +234,6 @@ func (p *Postgres) GetUserInfo(ctx context.Context, params model.GetUserInfoPara
 }
 
 func (p *Postgres) SendCoin(ctx context.Context, params model.SendCoinParams) error {
-	p.log.Debug("SendCoin", zap.Any("params", params))
-
 	tx, err := p.pgx.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.Serializable})
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrFailedToBeginTx, err)
