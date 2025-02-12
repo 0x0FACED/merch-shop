@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/0x0FACED/merch-shop/config"
@@ -21,6 +22,8 @@ type Handler struct {
 }
 
 func NewHandler(u *service.MerchService, l *logger.ZapLogger, cfg *config.ServerConfig) *Handler {
+	jwtSecret = os.Getenv("JWT_SECRET_KEY")
+
 	return &Handler{
 		userService: u,
 		logger:      l,
@@ -37,10 +40,6 @@ func (h *Handler) SetupRoutes(e *echo.Echo) {
 	group.POST("/sendCoin", h.SendCoin) // отправка монет кому-либо
 }
 
-// Для авторизации доступов должен использоваться JWT.
-// Пользовательский токен доступа к API выдается после авторизации/регистрации пользователя.
-// При первой авторизации пользователь должен создаваться автоматически.
-// TODO: Надо создавать юзера, если это его первый вход.
 func (h *Handler) AuthUser(c echo.Context) error {
 	var req AuthRequest
 
@@ -75,8 +74,7 @@ func (h *Handler) AuthUser(c echo.Context) error {
 		"exp":     time.Now().Add(time.Hour * 72).Unix(),
 	})
 
-	// TODO: ключ в пер окружения
-	tokenString, err := token.SignedString([]byte("super-secret-key"))
+	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
 		resp := ErrorResponse{Errors: "incorrect login or password"}
 		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), resp)

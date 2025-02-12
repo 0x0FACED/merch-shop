@@ -9,6 +9,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+var (
+	jwtSecret = ""
+)
+
 func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		tokenStr := c.Request().Header.Get("Authorization")
@@ -25,7 +29,7 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte("super-secret-key"), nil
+			return []byte(jwtSecret), nil
 		})
 
 		if err != nil || !token.Valid {
