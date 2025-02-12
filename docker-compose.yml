@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  avito-shop:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    container_name: avito-shop
+    env_file:
+      - ./.env
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  db:
+    image: postgres:16
+    container_name: avito-shop-db
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - ./db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U postgres -d merch_shop'"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app-network
+
+  migrate:
+    image: migrate/migrate
+    container_name: avito-shop-migrations
+    volumes:
+      - ./migrations:/migrations
+    networks:
+      - app-network
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://postgres:postgres@db:5432/merch_shop?sslmode=disable",
+      "up"
+    ]
+    depends_on:
+      - db
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:
