@@ -14,13 +14,13 @@ import (
 )
 
 type Handler struct {
-	userService *service.UserService
+	userService *service.MerchService
 
 	logger *logger.ZapLogger
 	config *config.ServerConfig
 }
 
-func NewHandler(u *service.UserService, l *logger.ZapLogger, cfg *config.ServerConfig) *Handler {
+func NewHandler(u *service.MerchService, l *logger.ZapLogger, cfg *config.ServerConfig) *Handler {
 	return &Handler{
 		userService: u,
 		logger:      l,
@@ -66,7 +66,8 @@ func (h *Handler) AuthUser(c echo.Context) error {
 
 	user, err := h.userService.AuthUser(ctx, params)
 	if err != nil {
-		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "invalid credentials")
+		resp := ErrorResponse{Errors: err.Error()}
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), resp)
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -77,7 +78,8 @@ func (h *Handler) AuthUser(c echo.Context) error {
 	// TODO: ключ в пер окружения
 	tokenString, err := token.SignedString([]byte("super-secret-key"))
 	if err != nil {
-		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "failed to create token")
+		resp := ErrorResponse{Errors: "incorrect login or password"}
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), resp)
 	}
 
 	resp := AuthResponse{

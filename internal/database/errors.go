@@ -7,7 +7,6 @@ var (
 	ErrQueryFailed            = errors.New("query failed")
 	ErrScanFailed             = errors.New("scan failed")
 	ErrRowsFailed             = errors.New("rows failed")
-	ErrNoFieldsToUpdate       = errors.New("no fields to update")
 
 	ErrFailedToBeginTx         = errors.New("failed to begin tx")
 	ErrNotFound                = errors.New("not found")
