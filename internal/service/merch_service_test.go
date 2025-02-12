@@ -19,7 +19,7 @@ func testLogger() *logger.ZapLogger {
 	cfg := config.LoggerConfig{
 		LogLevel: "debug",
 	}
-	return logger.New(cfg)
+	return logger.NewTestLogger(cfg)
 }
 
 // Тест успешной аутентификации
