@@ -70,9 +70,9 @@ func TestSendCoin_Success(t *testing.T) {
 
 // TestSendCoin_NotEnoughMoney проверяет отказ при нехватке монет
 func TestSendCoin_NotEnoughMoney(t *testing.T) {
-	token := authUser(t, "poor_sender", "password", testServer)
+	token := authUser(t, "poorsender", "password", testServer)
 
-	reqBody, _ := json.Marshal(map[string]interface{}{
+	reqBody, _ := json.Marshal(map[string]any{
 		"toUser": "testuser",
 		"amount": 5000, // Больше, чем есть на балансе
 	})
@@ -107,7 +107,7 @@ func TestAuth_WrongPassword(t *testing.T) {
 
 // TestUserInfo_Success проверяет получение инфы о пользователе
 func TestUserInfo_Success(t *testing.T) {
-	token := authUser(t, "info_user", "password", testServer)
+	token := authUser(t, "infouser", "password", testServer)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/info", nil)
 	req.Header.Set("Authorization", "Bearer "+token)

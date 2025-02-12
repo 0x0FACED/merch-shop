@@ -21,9 +21,7 @@ func authUser(t *testing.T, username, password string, testServer *server.Server
 	req.Header.Set("Content-Type", "application/json")
 
 	rec := httptest.NewRecorder()
-	if testServer == nil {
-		panic("nil test server")
-	}
+
 	testServer.Echo().ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)

@@ -2,8 +2,6 @@ package e2e
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,29 +9,48 @@ import (
 	"time"
 
 	"github.com/0x0FACED/merch-shop/config"
+	"github.com/0x0FACED/merch-shop/internal/database"
 	"github.com/0x0FACED/merch-shop/internal/server"
+	"github.com/0x0FACED/merch-shop/internal/server/handler"
+	"github.com/0x0FACED/merch-shop/internal/service"
+	"github.com/0x0FACED/merch-shop/pkg/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
-var testServer *server.Server
+var (
+	testServer *server.Server
+	testDB     *database.Postgres
+)
 
 func TestMain(m *testing.M) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	cfg := config.MustLoadTestConfig()
-	var err error
-	testServer, err = server.NewServer(cfg)
-	if err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
-	fmt.Println("testServer created:", testServer)
+	log := logger.New(cfg.Logger)
 
-	clearDB(ctx, testServer.Database())
+	var err error
+	testDB, err = database.New(cfg.Database, log)
+	if err != nil {
+		log.Fatal("Failed to create test database", zap.Error(err))
+	}
+	testDB.MustConnect(ctx)
+	defer testDB.Close()
+
+	merchService := service.NewUserService(testDB, log)
+	h := handler.NewHandler(merchService, log, &cfg.Server)
+
+	testServer, err = server.NewServer(cfg, h)
+	if err != nil {
+		log.Fatal("Failed to start test server", zap.Error(err))
+	}
+
+	clearDB(ctx, testDB.Pool())
 
 	go func() {
 		if err := testServer.Start(ctx); err != nil {
-			log.Fatalf("Server stopped with err: %v", err)
+			log.Fatal("Server stopped with err", zap.Error(err))
 		}
 	}()
 
@@ -42,7 +59,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	if err := testServer.Shutdown(); err != nil {
-		log.Fatal("Failed to shutdown test server:", err)
+		log.Fatal("Failed to shutdown test server", zap.Error(err))
 	}
 
 	os.Exit(code)
