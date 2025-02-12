@@ -2,7 +2,7 @@ package handler
 
 type AuthRequest struct {
 	Username string `json:"username" validate:"required,alphanum,max=255"`
-	Password string `json:"password" validate:"required,alphanum,min=8,max=128"`
+	Password string `json:"password" validate:"required,alphanum,min=4,max=128"`
 }
 
 type SendCoinRequest struct {
