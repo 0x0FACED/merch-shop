@@ -1,6 +1,6 @@
 # Merch Shop (Avito Trainee Task)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/0x0FACED/merch-shop)](https://goreportcard.com/report/github.com/0x0FACED/merch-shop)
+[![Go Report Card](https://goreportcard.com/badge/github.com/0x0FACED/merch-shop?random=1)](https://goreportcard.com/report/github.com/0x0FACED/merch-shop)
 
 
 Это мое решение тестового задания в Avito на позицию Backend Developer.
