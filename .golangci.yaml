@@ -8,3 +8,8 @@ linters:
     - ineffassign
     - staticcheck
     - unused
+    - gosec
+    - revive
+    - gocyclo
+    - unconvert
+    - prealloc
