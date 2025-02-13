@@ -26,6 +26,8 @@ func NewUserService(db merchRepository, l *logger.ZapLogger) *MerchService {
 }
 
 func (s *MerchService) AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error) {
+	s.logger.Info("AuthUser() request", zap.Any("params", params))
+
 	user, err := s.repo.AuthUser(ctx, params)
 	if err != nil {
 		s.logger.Error("AuthUser() -> AuthUser() request | error",
@@ -69,11 +71,14 @@ func (s *MerchService) AuthUser(ctx context.Context, params model.AuthUserParams
 		return nil, ErrFailedComparingHashAndPassword
 	}
 
+	s.logger.Info("AuthUser() response", zap.Any("params", params), zap.Any("user", user))
+
 	return user, nil
 }
 
-// TODO: REWRITE
 func (s *MerchService) GetUserInfo(ctx context.Context, params model.GetUserInfoParams) (*model.UserInfo, error) {
+	s.logger.Info("GetUserInfo() request", zap.Any("params", params))
+
 	userInfo, err := s.repo.GetUserInfo(ctx, params)
 	if err != nil {
 		s.logger.Error("GetUserInfo() -> GetUserInfo() request | error",
@@ -83,10 +88,14 @@ func (s *MerchService) GetUserInfo(ctx context.Context, params model.GetUserInfo
 		return nil, MapDBErrorToServiceError(err)
 	}
 
+	s.logger.Info("GetUserInfo() response", zap.Any("params", params), zap.Any("user_info", userInfo))
+
 	return userInfo, nil
 }
 
 func (s *MerchService) SendCoin(ctx context.Context, params model.SendCoinParams) error {
+	s.logger.Info("SendCoin() request", zap.Any("params", params))
+
 	if err := s.repo.SendCoin(ctx, params); err != nil {
 		s.logger.Error("SendCoin() -> SendCoin() request | error",
 			zap.Any("params", params),
@@ -95,10 +104,14 @@ func (s *MerchService) SendCoin(ctx context.Context, params model.SendCoinParams
 		return MapDBErrorToServiceError(err)
 	}
 
+	s.logger.Info("SendCoin() response", zap.Any("params", params))
+
 	return nil
 }
 
 func (s *MerchService) BuyItem(ctx context.Context, params model.BuyItemParams) error {
+	s.logger.Info("BuyItem() request", zap.Any("params", params))
+
 	balance, err := s.repo.GetUserBalance(ctx, params.UserID)
 	if err != nil {
 		s.logger.Error("BuyItem() -> GetUserBalance() request | error",
@@ -117,6 +130,8 @@ func (s *MerchService) BuyItem(ctx context.Context, params model.BuyItemParams) 
 		)
 		return MapDBErrorToServiceError(err)
 	}
+
+	s.logger.Info("BuyItem() response", zap.Any("params", params))
 
 	return nil
 }
