@@ -1,6 +1,8 @@
 package validator
 
 import (
+	"fmt"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -8,7 +10,6 @@ type ValidationError struct {
 	Index int    `json:"index,omitempty"` // Индекс записи в массиве
 	Field string `json:"field"`           // Поле, где произошла ошибка
 	Tag   string `json:"tag"`             // Тэг валидации, который не прошел
-	//Err   string `json:"error,omitempty"` // Нормальное описание ошибки (чтоб понятно было)
 }
 
 type ValidationErrorsResponse struct {
@@ -17,7 +18,16 @@ type ValidationErrorsResponse struct {
 
 // Реализуем интерфейс ошибки для структуры ValidationErrorsResponse
 func (v *ValidationErrorsResponse) Error() string {
-	return "validation errors"
+	if len(v.Errors) == 0 {
+		return "validation errors: no errors"
+	}
+
+	var result string
+	for _, err := range v.Errors {
+		result += fmt.Sprintf("Index: %d, Field: %s, Tag: %s; ", err.Index, err.Field, err.Tag)
+	}
+
+	return fmt.Sprintf("validation errors: %s", result)
 }
 
 type APIValidator struct {
@@ -49,26 +59,9 @@ func (v *APIValidator) ValidateStruct(i any) []*ValidationError {
 			validationErrors = append(validationErrors, &ValidationError{
 				Field: fieldErr.StructNamespace(),
 				Tag:   fieldErr.Tag(),
-				//Err:   fmt.Sprintf("Validation failed on '%s' for field '%s'", fieldErr.Tag(), fieldErr.Field()),
 			})
 		}
 	}
 
 	return validationErrors
 }
-
-/*
-func (v *APIValidator) ValidateArray(arr []*CreateRawEmailRequest) []*ValidationError {
-	var errors []*ValidationError
-
-	for i, item := range arr {
-		errs := v.ValidateStruct(item)
-		for _, e := range errs {
-			e.Index = i
-			errors = append(errors, e)
-		}
-	}
-
-	return errors
-}
-*/

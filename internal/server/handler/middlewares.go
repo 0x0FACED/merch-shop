@@ -17,12 +17,14 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		tokenStr := c.Request().Header.Get("Authorization")
 		if tokenStr == "" {
-			return echo.NewHTTPError(http.StatusUnauthorized, "missing token")
+			resp := ErrorResponse{Errors: "missing token"}
+			return echo.NewHTTPError(http.StatusUnauthorized, resp)
 		}
 
 		parts := strings.Split(tokenStr, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token format")
+			resp := ErrorResponse{Errors: "invalid token format"}
+			return echo.NewHTTPError(http.StatusUnauthorized, resp)
 		}
 
 		token, err := jwt.Parse(parts[1], func(token *jwt.Token) (any, error) {
@@ -33,17 +35,20 @@ func AuthMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
+			resp := ErrorResponse{Errors: "invalid token"}
+			return echo.NewHTTPError(http.StatusUnauthorized, resp)
 		}
 
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid claims")
+			resp := ErrorResponse{Errors: "invalid claims"}
+			return echo.NewHTTPError(http.StatusUnauthorized, resp)
 		}
 
 		userID, ok := claims["user_id"].(float64)
 		if !ok {
-			return echo.NewHTTPError(http.StatusUnauthorized, "invalid user_id")
+			resp := ErrorResponse{Errors: "invalid user_id"}
+			return echo.NewHTTPError(http.StatusUnauthorized, resp)
 		}
 
 		c.Set("user_id", uint(userID))

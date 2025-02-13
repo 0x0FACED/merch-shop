@@ -76,7 +76,7 @@ func (h *Handler) AuthUser(c echo.Context) error {
 
 	tokenString, err := token.SignedString([]byte(jwtSecret))
 	if err != nil {
-		resp := ErrorResponse{Errors: "incorrect login or password"}
+		resp := ErrorResponse{Errors: err.Error()}
 		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), resp)
 	}
 
@@ -98,7 +98,8 @@ func (h *Handler) GetUserInfo(c echo.Context) error {
 
 	userInfo, err := h.userService.GetUserInfo(ctx, params)
 	if err != nil {
-		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), "failed to get user info")
+		resp := ErrorResponse{Errors: err.Error()}
+		return echo.NewHTTPError(MapServiceErrorToStatusCode(err), resp)
 	}
 
 	resp := InfoResponse{
@@ -134,7 +135,8 @@ func (h *Handler) SendCoin(c echo.Context) error {
 	var req SendCoinRequest
 
 	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request")
+		resp := ErrorResponse{Errors: err.Error()}
+		return echo.NewHTTPError(http.StatusBadRequest, resp)
 	}
 
 	if err := c.Validate(&req); err != nil {

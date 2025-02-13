@@ -49,25 +49,20 @@ func (s *MerchService) AuthUser(ctx context.Context, params model.AuthUserParams
 
 			user, err = s.repo.CreateUser(ctx, createParams)
 			if err != nil {
-				// Failed to create user, return
 				return nil, MapDBErrorToServiceError(err)
 			}
-			// Successfully created user
 			return user, nil
 		}
 		// ошибка базы
 		return nil, MapDBErrorToServiceError(err)
 	}
 
-	// юзер существует, проверяем пароль и хэш базы
 	if err := compareHashAndPassword(user.Password, params.Password); err != nil {
 		s.logger.Error("AuthUser() -> compareHashAndPassword() request | error",
 			zap.Any("params", params),
 			zap.Error(err),
 		)
-		// пароли не совпали
-		// либо некорректная длина хэша
-		// отдаем неверный логин или пароль
+
 		return nil, ErrFailedComparingHashAndPassword
 	}
 
