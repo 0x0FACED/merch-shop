@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-type MockUserRepository struct {
+type MockMerchRepository struct {
 	mock.Mock
 }
 
-func (m *MockUserRepository) AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error) {
+func (m *MockMerchRepository) AuthUser(ctx context.Context, params model.AuthUserParams) (*model.User, error) {
 	args := m.Called(ctx, params)
 	if user, ok := args.Get(0).(*model.User); ok {
 		return user, args.Error(1)
@@ -19,7 +19,7 @@ func (m *MockUserRepository) AuthUser(ctx context.Context, params model.AuthUser
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) CreateUser(ctx context.Context, params model.CreateUserParams) (*model.User, error) {
+func (m *MockMerchRepository) CreateUser(ctx context.Context, params model.CreateUserParams) (*model.User, error) {
 	args := m.Called(ctx, params)
 	if user, ok := args.Get(0).(*model.User); ok {
 		return user, args.Error(1)
@@ -27,7 +27,7 @@ func (m *MockUserRepository) CreateUser(ctx context.Context, params model.Create
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) GetUserInfo(ctx context.Context, params model.GetUserInfoParams) (*model.UserInfo, error) {
+func (m *MockMerchRepository) GetUserInfo(ctx context.Context, params model.GetUserInfoParams) (*model.UserInfo, error) {
 	args := m.Called(ctx, params)
 	if userInfo, ok := args.Get(0).(*model.UserInfo); ok {
 		return userInfo, args.Error(1)
@@ -35,17 +35,17 @@ func (m *MockUserRepository) GetUserInfo(ctx context.Context, params model.GetUs
 	return nil, args.Error(1)
 }
 
-func (m *MockUserRepository) GetUserBalance(ctx context.Context, userID uint) (uint, error) {
+func (m *MockMerchRepository) GetUserBalance(ctx context.Context, userID uint) (uint, error) {
 	args := m.Called(ctx, userID)
 	return uint(args.Int(0)), args.Error(1)
 }
 
-func (m *MockUserRepository) SendCoin(ctx context.Context, params model.SendCoinParams) error {
+func (m *MockMerchRepository) SendCoin(ctx context.Context, params model.SendCoinParams) error {
 	args := m.Called(ctx, params)
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) BuyItem(ctx context.Context, params model.BuyItemParams) error {
+func (m *MockMerchRepository) BuyItem(ctx context.Context, params model.BuyItemParams) error {
 	args := m.Called(ctx, params)
 	return args.Error(0)
 }
