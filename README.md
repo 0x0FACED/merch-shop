@@ -37,6 +37,7 @@
     - [Хранение паролей](#хранение-паролей)
     - [Кэширование](#кэширование)
     - [Индексы](#индексы)
+  - [Использованные технологии](#использованные-технологии)
 
 ## Подход к решению задачи
 
@@ -708,3 +709,14 @@ ws=0 loops=1)
 ```
 
 Запросы были оптимизированы для работы с индексами и Bitmap-сканированием, что позволяет им работать с большими объемами данных эффективно. Время выполнения большинства запросов составляет миллисекунды, что в целом неплохой результат, как мне кажется.
+
+## Использованные технологии
+
+1. [env](https://github.com/caarlos0/env)
+2. [validator](https://github.com/go-playground/validator)
+3. [jwt](https://github.com/golang-jwt/jwt)
+4. [pgx](https://github.com/jackc/pgx)
+5. [godotenv](https://github.com/joho/godotenv)
+6. [echo](https://github.com/labstack/echo)
+7. [testify](https://github.com/stretchr/testify)
+8. [zap](https://go.uber.org/zap)
