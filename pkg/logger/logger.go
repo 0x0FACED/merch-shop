@@ -1,3 +1,13 @@
+// Package logger предоставляет обертку над zap.Logger
+// с удобными методами для логирования в файл и консоль.
+//
+// Этот пакет поддерживает уровни логирования: debug, info error, fatal.
+// Логи записываются в директорию logs/ в формате JSON.
+//
+// Пример использования:
+//
+//	logger := logger.New(config.LoggerConfig{LogLevel: "debug"})
+//	logger.Info("Application has been started!")
 package logger
 
 import (
