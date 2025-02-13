@@ -38,8 +38,8 @@ func New(cfg config.LoggerConfig) *ZapLogger {
 	level := level(cfg.LogLevel)
 
 	core := zapcore.NewTee(
-		zapcore.NewCore(cEnc, zapcore.AddSync(os.Stdout), zapcore.Level(level)),
-		zapcore.NewCore(fEnc, zapcore.AddSync(file), zapcore.Level(level)),
+		zapcore.NewCore(cEnc, zapcore.AddSync(os.Stdout), level),
+		zapcore.NewCore(fEnc, zapcore.AddSync(file), level),
 	)
 
 	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
@@ -56,7 +56,7 @@ func NewTestLogger(cfg config.LoggerConfig) *ZapLogger {
 	level := level(cfg.LogLevel)
 
 	core := zapcore.NewTee(
-		zapcore.NewCore(cEnc, zapcore.AddSync(os.Stdout), zapcore.Level(level)),
+		zapcore.NewCore(cEnc, zapcore.AddSync(os.Stdout), level),
 	)
 
 	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
