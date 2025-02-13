@@ -29,5 +29,7 @@ WORKDIR /app
 COPY --from=builder /app/avito-shop ./
 COPY .env ./.env
 
+RUN mkdir -p /app/logs && chmod 777 /app/logs
+
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["./avito-shop"]
