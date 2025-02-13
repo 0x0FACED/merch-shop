@@ -66,8 +66,8 @@ func TestMain(m *testing.M) {
 }
 
 func clearDB(ctx context.Context, db *pgxpool.Pool) {
-	db.Exec(ctx, "DELETE FROM shop.users")
-	db.Exec(ctx, "DELETE FROM shop.wallets")
-	db.Exec(ctx, "DELETE FROM shop.inventory")
-	db.Exec(ctx, "DELETE FROM shop.transactions")
+	_, _ = db.Exec(ctx, "DELETE FROM shop.users")
+	_, _ = db.Exec(ctx, "DELETE FROM shop.wallets")
+	_, _ = db.Exec(ctx, "DELETE FROM shop.inventory")
+	_, _ = db.Exec(ctx, "DELETE FROM shop.transactions")
 }

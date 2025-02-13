@@ -27,6 +27,6 @@ func authUser(t *testing.T, username, password string, testServer *server.Server
 	assert.Equal(t, http.StatusOK, rec.Code)
 
 	var response map[string]string
-	json.Unmarshal(rec.Body.Bytes(), &response)
+	_ = json.Unmarshal(rec.Body.Bytes(), &response)
 	return response["token"]
 }
