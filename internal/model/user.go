@@ -8,6 +8,6 @@ type User struct {
 
 type UserInfo struct {
 	Coins       uint `db:"balance"`
-	Inventory   Inventory
+	Inventory   []Item
 	CoinHistory CoinHistory
 }

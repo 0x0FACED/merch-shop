@@ -8,7 +8,7 @@ type ErrorResponse struct {
 
 type InfoResponse struct {
 	Coins       uint              `json:"coins"`
-	Inventory   model.Inventory   `json:"inventory"`
+	Inventory   []model.Item      `json:"inventory"`
 	CoinHistory model.CoinHistory `json:"coinHistory"`
 }
 
