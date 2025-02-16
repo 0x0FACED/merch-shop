@@ -417,7 +417,7 @@ sudo docker cp init_users_100k.sql db-container-name:/init_users_100k.sql
 
 У меня контейнер называется `avito-shop-db`, поэтому на место `db-container-name` я пишу `avito-shop-db`.
 
-3. Выполнить скрипт внутри контейнера. Скрипт создаст расширение `pgcrypto` для использовать `bcrypt` и в цикле будет создавать 100к юзеров и 100к кошельков для них.
+3. Выполнить скрипт внутри контейнера. Скрипт создаст расширение `pgcrypto` для использования `bcrypt` и в цикле будет создавать 100к юзеров и 100к кошельков для них.
 
 ```sh
 sudo docker exec -it db-container-name psql -U username -d db_name -f /init_users_100k.sql
