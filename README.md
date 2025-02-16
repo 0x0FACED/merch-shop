@@ -22,6 +22,8 @@
       - [Load Test 2](#load-test-2)
       - [Load Test 3](#load-test-3)
       - [Load Test 4](#load-test-4)
+      - [Load Test 5](#load-test-5)
+      - [Load Test 6](#load-test-6)
     - [Профилирование во время нагрузочных тестов и после](#профилирование-во-время-нагрузочных-тестов-и-после)
     - [Unit-тесты](#unit-тесты)
     - [Интеграционное тестирование](#интеграционное-тестирование)
@@ -391,6 +393,145 @@ default ✓ [======================================] 500 VUs  1m0s
 ```
 
 `http_req_duration` остался на том же примерно уровне.
+
+
+#### Load Test 5
+
+Этот тест проводится с заранее созданными 100к пользователями в базе данных.
+
+**Как создать 100к юзеров в БД (Docker):**
+
+1. Сначала надо запустить docker контейнеры:
+
+```sh
+sudo docker compose up -d
+```
+
+`-d` запускает контейнеры в фоновом режиме.
+
+2. Копировать SQL скрипт для создания юзеров и кошельков в докер контейнер следующей командой:
+
+```sh
+sudo docker cp init_users_100k.sql db-container-name:/init_users_100k.sql
+```
+
+У меня контейнер называется `avito-shop-db`, поэтому на место `db-container-name` я пишу `avito-shop-db`.
+
+3. Выполнить скрипт внутри контейнера. Скрипт создаст расширение `pgcrypto` для использовать `bcrypt` и в цикле будет создавать 100к юзеров и 100к кошельков для них.
+
+```sh
+sudo docker exec -it db-container-name psql -U username -d db_name -f /init_users_100k.sql
+```
+
+Скрипт может выполняться продолжительное время.
+
+Когда скрипт будет завершен, можно запускать нагрузочный тест на 100к юзеров. Скрипт читает файл `users.txt` и случайным образом берет из юзеров одного для выполнения запроса. Мы заранее создаем 100к этих юзеров, потому что создание юзера идет долго из-за вычисления хэша пароля.
+
+**Тестовый файл**: `load_test_100k_users.js`
+
+**Запуск теста**:
+
+```sh
+k6 run load_test_100k_users.js
+```
+**Результаты тестирования:**
+
+```sh
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: load_test_100k_users.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 500 max VUs, 1m30s max duration (incl. graceful stop):
+              * default: 500 looping VUs for 1m0s (gracefulStop: 30s)
+
+
+     ✓ Auth success
+     ✓ Info success
+
+   ✓ checks.........................: 100.00% 58726 out of 58726
+     data_received..................: 13 MB   208 kB/s
+     data_sent......................: 13 MB   205 kB/s
+     http_req_blocked...............: avg=13.88µs min=992ns    med=5.06µs  max=34.25ms p(90)=7.88µs  p(95)=9.36µs 
+     http_req_connecting............: avg=7.58µs  min=0s       med=0s      max=34.19ms p(90)=0s      p(95)=0s     
+   ✓ http_req_duration..............: avg=1.24ms  min=450.99µs med=1.34ms  max=13.76ms p(90)=1.82ms  p(95)=2.05ms 
+       { expected_response:true }...: avg=1.24ms  min=450.99µs med=1.34ms  max=13.76ms p(90)=1.82ms  p(95)=2.05ms 
+     http_req_failed................: 0.00%   0 out of 58726
+     http_req_receiving.............: avg=48.47µs min=10.38µs  med=44.46µs max=3.62ms  p(90)=67.88µs p(95)=79.02µs
+     http_req_sending...............: avg=18.45µs min=3.79µs   med=16.15µs max=4.5ms   p(90)=25.64µs p(95)=30.85µs
+     http_req_tls_handshaking.......: avg=0s      min=0s       med=0s      max=0s      p(90)=0s      p(95)=0s     
+     http_req_waiting...............: avg=1.17ms  min=409.27µs med=1.29ms  max=13.63ms p(90)=1.73ms  p(95)=1.97ms 
+     http_reqs......................: 58726   962.659296/s
+     iteration_duration.............: avg=1.03s   min=1s       med=1s      max=1.99s   p(90)=1.01s   p(95)=1.07s  
+     iterations.....................: 29363   481.329648/s
+     vus............................: 31      min=31             max=500
+     vus_max........................: 500     min=500            max=500
+
+
+running (1m01.0s), 000/500 VUs, 29363 complete and 0 interrupted iterations
+default ✓ [======================================] 500 VUs  1m0s
+```
+
+Здесь мы только делали `auth` и запрашивали информацию о себе. **Средняя продолжительность запроса 1.2мс**, ни одной ошибки нет.
+
+#### Load Test 6
+
+Немного изменим скрипт для нагрузочного тестирования по сравнению с Load Test 5. А именно: добавим еще и отправку монеты и покупку предмета юзером помимо получения информации о себе.
+
+**Результаты тестирования**:
+
+```sh
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: load_test_100k_users.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 500 max VUs, 1m30s max duration (incl. graceful stop):
+              * default: 500 looping VUs for 1m0s (gracefulStop: 30s)
+
+
+     ✓ Auth success
+     ✓ Info success
+     ✓ Buy success
+     ✗ SendCoin success
+      ↳  99% — ✓ 15025 / ✗ 5
+
+   ✓ checks.........................: 99.99% 60115 out of 60120
+     data_received..................: 9.0 MB 146 kB/s
+     data_sent......................: 15 MB  243 kB/s
+     http_req_blocked...............: avg=11.2µs  min=1.33µs   med=5.36µs  max=23.05ms p(90)=8.21µs  p(95)=9.77µs 
+     http_req_connecting............: avg=4.78µs  min=0s       med=0s      max=22.97ms p(90)=0s      p(95)=0s     
+   ✓ http_req_duration..............: avg=1.66ms  min=571.15µs med=1.55ms  max=34.46ms p(90)=2.1ms   p(95)=2.4ms  
+       { expected_response:true }...: avg=1.66ms  min=571.15µs med=1.55ms  max=34.46ms p(90)=2.1ms   p(95)=2.4ms  
+     http_req_failed................: 0.00%  5 out of 60120
+     http_req_receiving.............: avg=45.44µs min=8.2µs    med=41.97µs max=2.29ms  p(90)=63.73µs p(95)=74.14µs
+     http_req_sending...............: avg=19.09µs min=4.49µs   med=17.21µs max=1.28ms  p(90)=27.39µs p(95)=32.5µs 
+     http_req_tls_handshaking.......: avg=0s      min=0s       med=0s      max=0s      p(90)=0s      p(95)=0s     
+     http_req_waiting...............: avg=1.59ms  min=537.04µs med=1.5ms   max=34.39ms p(90)=2.02ms  p(95)=2.32ms 
+     http_reqs......................: 60120  975.996904/s
+     iteration_duration.............: avg=2.02s   min=1s       med=1.99s   max=2.98s   p(90)=2.07s   p(95)=2.46s  
+     iterations.....................: 15030  243.999226/s
+     vus............................: 258    min=258            max=500
+     vus_max........................: 500    min=500            max=500
+
+
+running (1m01.6s), 000/500 VUs, 15030 complete and 0 interrupted iterations
+default ✓ [======================================] 500 VUs  1m0s
+```
+
+Оценим результаты. Продолжительность запроса 1.66мс, что удовлетворяет условию задачи. Запросы на покупку все прошли, 100% успешных. Запросы на отправку монет прошли почти все, за исключением 5. Это связано с тем, что некоторые запросы обращались к одним и тем же данным. Например, одновременно так получалось, что рандом выбирал одного юзера для выполнения запросов. Или же одновременно `user2` выбирался, которому шла отправка монеты. Это небольшая погрешность. 
+
+Считаю нагрузочные тесты пройдены успешно.
 
 ### Профилирование во время нагрузочных тестов и после
 
